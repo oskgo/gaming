@@ -1,17 +1,14 @@
-use crate::utils::{Game, Actor};
+use crate::utils::{Game, Actor, TwoPlayerWinLoseOutcome};
 
 #[derive(Debug, Copy, Clone)]
 enum Player {
-    One,
-    Two
+    One = 0,
+    Two = 1
 }
 
 impl From<Player> for usize {
     fn from(player: Player) -> Self {
-        match player {
-            Player::One => 0,
-            Player::Two => 1
-        }
+        player as usize
     }
 }
 
@@ -25,6 +22,7 @@ enum HasFaceDown {
     No
 }
 
+#[derive(Debug)]
 struct Card;
 
 struct MidGameView {
@@ -42,21 +40,27 @@ enum View {
     SelectTrump(SelectTrumpView)
 }
 
+#[derive(Debug)]
 struct MidGameState {
     current_player: Player,
     player_one_cards: [Option<(Card, Option<Card>)>; 8],
+    player_one_score: u8,
     player_two_cards: [Option<(Card, Option<Card>)>; 8],
+    player_two_score: u8,
 }
 
+#[derive(Debug)]
 struct SelectTrumpState {
     cards: [Card; 4]
 }
 
+#[derive(Debug)]
 enum State {
     MidGame(MidGameState),
     SelectTrump(SelectTrumpState)
 }
 
+#[derive(Debug)]
 struct OffiziersSkat {
     state: State,
     players: [Box<dyn Actor<2, OffiziersSkat>>; 2]
@@ -91,7 +95,7 @@ impl Game<2> for OffiziersSkat {
 
     type PlayerId = Player;
 
-    type Outcome = Outcome;
+    type Outcome = TwoPlayerWinLoseOutcome;
 
     fn try_act(&mut self, action: Self::Action, player_id: Self::PlayerId) -> Result<(), crate::utils::InvalidActionError<2, Self>> {
         todo!()
