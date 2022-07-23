@@ -1,6 +1,7 @@
 use dyn_clonable::clonable;
 use thiserror::Error;
 use std::fmt::{Debug, Display};
+pub mod drawing;
 
 #[clonable]
 pub trait Actor<const C: usize, G: Game<C>>: Display + Debug + Clone {
@@ -8,22 +9,25 @@ pub trait Actor<const C: usize, G: Game<C>>: Display + Debug + Clone {
 }
 
 #[derive(Error, Debug)]
+#[error("Invalid action: {action:?} for player {player_id:?} with view {view:?}")]
 pub struct InvalidActionError<const C: usize, G: Game<C>> {
     pub player_id: G::PlayerId,
-    pub action: G::Action
+    pub action: G::Action,
+    pub view: G::PlayerView,
 }
 
 #[derive(Error, Debug)]
 pub enum PlayError<const C: usize, G: Game<C>> {
+    #[error("{0}")]
     InvalidAction(#[from] InvalidActionError<C, G>),
 }
 
 pub trait Game<const PLAYER_COUNT: usize> : Debug + Sized + Iterator<Item=Self::PlayerId> {
-    type Action: Debug;
+    type Action: Debug + 'static;
 
-    type PlayerView;
+    type PlayerView: Debug + 'static;
 
-    type PlayerId: Copy + Debug + Into<usize>;
+    type PlayerId: Copy + Debug + Into<usize> + 'static;
 
     type Outcome;
 

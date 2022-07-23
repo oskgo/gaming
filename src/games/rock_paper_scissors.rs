@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, marker::PhantomData};
+use std::{collections::HashMap, fmt::Display};
 
 use rand::{distributions::Uniform, thread_rng, Rng};
 
