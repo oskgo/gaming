@@ -1,7 +1,6 @@
 use std::{error::Error, fmt::Display, ops::Add};
 
-use color::Rgb;
-use plotters::{prelude::{BitMapBackend, ChartBuilder, IntoDrawingArea, Rectangle, IntoSegmentedCoord, SegmentValue}, style::{WHITE, TextStyle, self, RGBColor, Color}};
+use plotters::{prelude::{BitMapBackend, ChartBuilder, IntoDrawingArea, Rectangle, IntoSegmentedCoord, SegmentValue}, style::{WHITE, TextStyle, self, RGBColor, Color, FontTransform, text_anchor::{Pos, HPos, VPos}}};
 
 use super::{Actor, Game, TwoPlayerOutcome, WithPlayers, OutcomeStats, OutcomeStatsMatrix, get_sorted_stats_and_names};
 
@@ -10,6 +9,14 @@ fn outcome_color(stats: OutcomeStats) -> RGBColor {
     let one_wins_normalized: u8 = (stats.one_wins as f64 / total as f64 * 255.0).round() as u8;
     let two_wins_normalized: u8 = (stats.two_wins as f64 / total as f64 * 255.0).round() as u8;
     RGBColor(two_wins_normalized, one_wins_normalized, 0)
+}
+
+fn index_from_segment(segment: &SegmentValue<i32>) -> usize {
+    match *segment {
+        SegmentValue::Exact(a) => a,
+        SegmentValue::CenterOf(a) => a,
+        SegmentValue::Last => i32::MAX,
+    }.try_into().unwrap()
 }
 
 pub fn draw_game_matrix<G: Game<2> + Default + 'static + Display>(
@@ -30,23 +37,22 @@ where
     let mut chart = ChartBuilder::on(&root)
         .caption(G::default().to_string(), ("sans-serif", 80))
         .margin(5)
-        .top_x_label_area_size(80)
+        .x_label_area_size(80)
         .y_label_area_size(80)
         .build_cartesian_2d((0..(ni-1)).into_segmented(), (0..(ni-1)).into_segmented())
         .unwrap();
 
     chart
         .configure_mesh()
-        //.x_label_formatter(&|i| {if i.into() != n {players[i.into()].to_string()} else {"".to_string()}})
-        //.y_label_formatter(&|i| {if i.into() != n {players[i.into()].to_string()} else {"".to_string()}})
+        .x_label_formatter(&|i| {if index_from_segment(i) != n {players[index_from_segment(i)].to_string()} else {"".to_string()}})
+        .y_label_formatter(&|i| {if index_from_segment(i) != n {players[index_from_segment(i)].to_string()} else {"".to_string()}})
         .x_labels(n)
         .y_labels(n)
         .max_light_lines(4)
         .disable_x_mesh()
         .disable_y_mesh()
         .x_label_style(
-            Into::<TextStyle<'_>>::into(("sans-serif", 20)).transform(style::FontTransform::Rotate270),
-        )
+            Into::<TextStyle<'_>>::into(("sans-serif", 20)))
         .y_label_style(("sans-serif", 20))
         .draw()
         .unwrap();
@@ -65,8 +71,7 @@ where
             }),
     ).unwrap();
 
-    // To avoid the IO failure being ignored silently, we manually call the present function
-    root.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
+    root.present().expect("Unable to write result to file");
     println!("Result has been saved to {}", out_file_name);
     Ok(())
 }

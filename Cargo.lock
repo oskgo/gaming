@@ -895,3 +895,7 @@ dependencies = [
  "once_cell",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "plotters"
+version = "0.3.3"
