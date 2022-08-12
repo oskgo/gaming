@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use rand::{distributions::Uniform, thread_rng, Rng};
 
-use crate::utils::{Actor, Game, PlayError, TwoPlayerOutcome, WithPlayers};
+use crate::utils::{Actor, Game, PlayError, TwoPlayerOutcome, WithPlayers, OutcomeStats};
 
 #[derive(Debug, Default)]
 pub struct RockPaperScissors(HashMap<Player, Choice>);
@@ -18,6 +18,12 @@ impl Iterator for RockPaperScissors {
         }
         self.0.clear();
         Some(Player::One)
+    }
+}
+
+impl Display for RockPaperScissors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Rock Paper Scissors")
     }
 }
 
@@ -140,12 +146,11 @@ impl Actor<2, RockPaperScissors> for Randomer {
     }
 }
 
-pub fn game_matrix(game_count: usize) -> Result<Vec<Vec<Option<f64>>>, PlayError<2, RockPaperScissors>> {
-    let players = vec![
+pub fn players() -> Vec<Box<dyn Actor<2, RockPaperScissors>>> {
+    vec![
         Box::new(Rocker) as Box<dyn Actor<2, _>>,
         Box::new(Paperer),
         Box::new(Scissorer),
         Box::new(Randomer),
-    ];
-    WithPlayers::<2, RockPaperScissors>::play_matrix(players, game_count)
+    ]
 }

@@ -1,6 +1,6 @@
 use dyn_clonable::clonable;
 use thiserror::Error;
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}, collections::HashMap};
 pub mod drawing;
 
 #[clonable]
@@ -72,31 +72,75 @@ pub enum TwoPlayerOutcome {
     Draw
 }
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct OutcomeStats {
+    one_wins: usize,
+    two_wins: usize,
+    draws: usize,
+}
+
+impl OutcomeStats {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn games(&self) -> usize {
+        self.one_wins + self.two_wins + self.draws
+    }
+}
+
+type OutcomeStatsMatrix = Vec<Vec<OutcomeStats>>;
+
 impl<T: Into<TwoPlayerOutcome>, G: Game<2, Outcome = T> + Default> WithPlayers<2, G> {
-    pub fn play_matrix(players: Vec<Box<dyn Actor<2, G>>>, game_count: usize) -> Result<Vec<Vec<Option<f64>>>, PlayError<2, G>> {
-        let mut matrix = vec![vec![None; players.len()]; players.len()];
+    pub fn play_matrix(players: Vec<Box<dyn Actor<2, G>>>, game_count: usize) -> Result<OutcomeStatsMatrix, PlayError<2, G>> {
+        let mut matrix: Vec<Vec<OutcomeStats>> = players.iter().map(|p1| {
+            players.iter().map(|p2| {
+                OutcomeStats::new()
+            }).collect()
+        }).collect();
         for (i, player) in players.clone().into_iter().enumerate() {
             for (j, other_player) in players.clone().into_iter().enumerate() {
-                let mut wins = 0;
-                let mut decicives = 0;
                 for _ in 0..game_count {
                     let game = WithPlayers::new([player.clone(), other_player.clone()]);
                     match game.play()?.into() {
-                        TwoPlayerOutcome::OneWins => {
-                            wins += 1;
-                            decicives += 1;
-                        }
-                        TwoPlayerOutcome::TwoWins => decicives += 1,
-                        TwoPlayerOutcome::Draw => (),
+                        TwoPlayerOutcome::OneWins => matrix[i][j].one_wins += 1,
+                        TwoPlayerOutcome::TwoWins => matrix[i][j].two_wins += 1,
+                        TwoPlayerOutcome::Draw => matrix[i][j].draws += 1,
                     }
                 }
-                matrix[i][j] = if decicives == 0 {
-                    None
-                } else {
-                    Some(wins as f64 / decicives as f64)
-                };
             }
         }
         Ok(matrix)
     }
+}
+
+pub fn get_sorted_stats_and_names<G: Game<2> + Default + 'static>(players: &Vec<Box<dyn Actor<2, G>>>, game_count: usize) -> Result<(Vec<String>, OutcomeStatsMatrix), Box<dyn std::error::Error>>
+where
+    G::Outcome: Into<TwoPlayerOutcome>
+{
+    let mut player_names: Vec<String> = players.iter().map(|p| p.to_string()).collect();
+    let matrix = WithPlayers::<2, G>::play_matrix(players.clone(), game_count)?;
+    let mut weight: HashMap<String, usize> = HashMap::new();
+    let mut hash_matrix: HashMap<(String, String), OutcomeStats> = HashMap::new();
+    for p in players {
+        weight.insert(p.to_string(), 0);
+    }
+    for (i, p1) in players.iter().enumerate() {
+        weight.insert(p1.to_string(), 0);
+        for (j, p2) in players.iter().enumerate() {
+            hash_matrix.insert((p1.to_string(), p2.to_string()), matrix[i][j].clone());
+            *weight.get_mut(&*p1.to_string()).unwrap() += 2*matrix[i][j].one_wins + matrix[i][j].draws;
+            *weight.get_mut(&*p2.to_string()).unwrap() += 2*matrix[i][j].two_wins + matrix[i][j].draws;
+        }
+    }
+    player_names.sort_by(|p1, p2| {
+        weight[&**p1].cmp(&weight[&**p2])
+    });
+    let matrix: Vec<Vec<OutcomeStats>> = player_names.iter().map(|p1| {
+        player_names.iter().map(|p2| {
+            hash_matrix[&(p1.clone(), p2.clone())].clone()
+        }).collect()
+    }).collect();
+    Ok((player_names, matrix))
 }

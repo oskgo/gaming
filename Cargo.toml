@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.58"
+color-rs = "0.7.1"
 dyn-clonable = "0.9.0"
 plotters = "0.3.2"
 rand = "0.8.5"
